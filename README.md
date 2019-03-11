@@ -6,7 +6,8 @@ Compressing neural data.
 ## Directory structure
 
 ```
+  figures/
+  data/  # Hidden
   src/
     compress.jl
-  data/  # Hidden
 ```
