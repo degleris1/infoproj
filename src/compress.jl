@@ -25,8 +25,8 @@ function naive_delta_code(data; nbits=8, verbose=false)
     count = 0
     for i = 1:len_str
         val = stream[i]
-        if (verbose && i % 1_000_000 == 0)
-            println("1 million rows encoded")
+        if (verbose && i % 100_000_000 == 0)
+            println("100 million rows encoded")
         end
 
         if (val <= diff_max && val >= diff_min)
