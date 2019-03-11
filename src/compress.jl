@@ -64,7 +64,7 @@ function int_to_bit(val, diff_min, nbits)
     offset_val = val - diff_min
     binary_rep = bitstring(Int16(offset_val))
 
-    return BitArray(c == '1' for c in binary_rep)
+    return BitArray(c == '1' for c in binary_rep[16+1-nbits:16])
 end
 
 end #endmodule
