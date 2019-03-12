@@ -50,6 +50,32 @@ function naive_delta_code(data; nbits=8, verbose=false)
     return delta[1:count], outliers, meta
 end
 
+function decompress(deltas::AbstractArray, outliers::Dict, meta::Meta; dtype=Int16)
+    (N, T) = meta.dims
+    nbits = meta.nbits
+    diff_min, diff_max = get_bin_size(nbits)
+    out = zeros(N*T)
+
+    # Start should always be in the dictionary
+    out[1] = outliers[1]
+
+    bit_ind = 1
+    for i in 2:N*T
+        if haskey(outliers, i)
+            out[i] = outliers[i]
+        else
+            diff = deltas[bit_ind:bit_ind+nbits-1]
+            new_val = out[i-1] + bit_to_int(diff, diff_min)
+            out[i] = new_val
+            bit_ind += nbits
+        end
+    end
+
+    # Reshape to matrix
+    out = reshape(out, N, T)
+    return out
+end
+
 
 """
 Get the minimum and maximum integer size for a given number of bits.
@@ -62,7 +88,6 @@ function get_bin_size(nbits)
 end
 
 
-
 """
 Convert a string of ones and zeros to an array of booleans.
 """
@@ -73,22 +98,9 @@ function int_to_bit(val, diff_min, nbits)
     return BitArray(c == '1' for c in binary_rep[16+1-nbits:16])
 end
 
-function bit_to_int(arr::Union{BitArray, BitVector})
-    @assert(length(arr) <= 64) # won't work for sizes > 64 bit ints!
-    reversed = arr.chunks[1]
-    return revbits(reversed)
-end
-
-# Taken from:
-# https://discourse.julialang.org/t/covert-bitarray-to-int64/9193/2
-function revbits(z::UInt64)
-    z = (((z & 0xaaaaaaaaaaaaaaaa) >>  1) | ((z & 0x5555555555555555) <<  1))
-    z = (((z & 0xcccccccccccccccc) >>  2) | ((z & 0x3333333333333333) <<  2))
-    z = (((z & 0xf0f0f0f0f0f0f0f0) >>  4) | ((z & 0x0f0f0f0f0f0f0f0f) <<  4))
-    z = (((z & 0xff00ff00ff00ff00) >>  8) | ((z & 0x00ff00ff00ff00ff) <<  8))
-    z = (((z & 0xffff0000ffff0000) >> 16) | ((z & 0x0000ffff0000ffff) << 16))
-    z = (((z & 0xffffffff00000000) >> 32) | ((z & 0x00000000ffffffff) << 32))
-    return z
+function bit_to_int(arr::Union{BitArray, BitVector}, diff_min; dtype=Int16)
+    str = bitstring(arr)
+    return parse(dtype, str; base=2) + diff_min
 end
 
 end #endmodule
