@@ -15,7 +15,7 @@ function naive_delta_code(data; nbits=8, verbose=false)
     # Flatten data
     n_streams, n_samples = size(data)
 
-    stream = reshape(data, n_streams*n_samples)
+    stream = reshape(permutedims(data, (2, 1)), n_streams*n_samples)
     len_str = length(stream)
     
     # Difference data along each row
@@ -29,10 +29,10 @@ function naive_delta_code(data; nbits=8, verbose=false)
 
     diff_min, diff_max = get_bin_size(nbits)
     count = 0
-    for i = 1:len_str
-        val = stream[i]
+    for i = 2:len_str
+        val = stream[i] - stream[i-1]
         if (verbose && i % 100_000_000 == 0)
-            println("100 million rows encoded")
+            println("100 million values encoded")
         end
 
         if (val <= diff_max && val >= diff_min)
@@ -43,7 +43,7 @@ function naive_delta_code(data; nbits=8, verbose=false)
 
         else
             # Big delta
-            outliers[i+1] = val
+            outliers[i] = stream[i]
         end
     end
 
@@ -71,9 +71,10 @@ function decompress(deltas::AbstractArray, outliers::Dict, meta::Meta; dtype=Int
         end
     end
 
-    # Reshape to matrix
-    out = reshape(out, N, T)
-    return out
+    # Reshape row-wise
+    data = reshape(out, T, N)
+    data = permutedims(data, (2, 1))
+    return data
 end
 
 
