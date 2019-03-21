@@ -11,3 +11,6 @@ Compressing neural data.
   src/
     compress.jl
 ```
+
+$$ \pi^2 = \epsilon / 2 $$
+
