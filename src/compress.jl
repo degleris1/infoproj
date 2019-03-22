@@ -1,4 +1,5 @@
 module compress
+import RawArray
 export naive_delta_code
 export decompress
 export Meta
@@ -8,6 +9,25 @@ mutable struct Meta
     dims::Tuple
     function Meta(nbits, dims)
         return new(nbits, dims)
+    end
+end
+
+function compress_pipeline(data, folder::AbstractString, nbits=8)
+    """
+    Run the delta coding compression pipeline and store all
+    resulting files in `folder`. Call bzip2 on the resulting folder.
+    """
+    mkdir(folder)
+    delta_path = string(folder, "/", "deltas")
+    outlier_path = string(folder, "/", "outliers")
+
+    (delta, outliers, meta) = compress.naive_delta_code(data; nbits=nbits)
+    RawArray.rawrite(delta, delta_path, compress=true)
+    write_dictionary(outlier_path, outliers)
+
+    for file in readdir(folder)
+        filepath = string(folder, "/", file)
+        run(`bzip2 -k -7 $filepath`)
     end
 end
 
@@ -77,6 +97,21 @@ function decompress(deltas::AbstractArray, outliers::Dict, meta::Meta; dtype=Int
     return data
 end
 
+function write_dictionary(path::AbstractString, outliers::Dict)
+"""
+We don't want to write the dictionary to disk directly because
+storing the hash table is unnecessary overhead.
+Instead, we'll write the dictionary to disk as 2 separate arrays, 
+one with the list of indexes, and the other with the corresponding values.
+This trades search time for storage space.
+"""
+inds = UInt32.([keys(outliers)...])
+vals = Int16.([outliers[key] for key in keys(outliers)])
+inds_path = string(path, "_inds.raw")
+vals_path = string(path, "_vals.raw")
+RawArray.rawrite(inds, inds_path, compress=true)
+RawArray.rawrite(vals, vals_path, compress=true)
+end
 
 """
 Get the minimum and maximum integer size for a given number of bits.
